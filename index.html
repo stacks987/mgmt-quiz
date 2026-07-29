@@ -194,6 +194,10 @@
           <select id="catSelect"></select>
         </div>
         <div class="setup-row">
+          <label>Source</label>
+          <select id="srcSelect"></select>
+        </div>
+        <div class="setup-row">
           <label>Number of Questions</label>
           <input type="number" id="numQ" min="1" value="15">
         </div>
@@ -241,6 +245,10 @@
         <div class="setup-row">
           <label>Chapter</label>
           <select id="refCatSelect"></select>
+        </div>
+        <div class="setup-row">
+          <label>Source</label>
+          <select id="refSrcSelect"></select>
         </div>
         <button class="btn" onclick="startRef()">Browse</button>
       </div>
@@ -334,6 +342,11 @@ function resetToSetupScreens() {
   switchTab('quiz');
 }
 
+function getSourceLabel(item) {
+  const m = (item.source || '').match(/^(pdf\d+)/i);
+  return m ? m[1].toLowerCase() : 'Other / unlabeled';
+}
+
 function refreshHeaderAndLists() {
   document.getElementById('tabQuizBtn').textContent = 'Quiz (' + QUIZ_DATA.length + ')';
   const hasRef = REF_DATA.length > 0;
@@ -342,7 +355,8 @@ function refreshHeaderAndLists() {
   document.getElementById('subtitleText').textContent =
     PAPERS[currentPaper].label + ' \u00b7 ' + QUIZ_DATA.length + ' questions' + (hasRef ? ', ' + REF_DATA.length + ' reference items' : ', no reference items yet');
   populateCategories();
-  if (hasRef) populateRefCategories();
+  populateSourceSelect();
+  if (hasRef) { populateRefCategories(); populateRefSourceSelect(); }
 }
 
 async function loadPaper(key) {
@@ -410,9 +424,29 @@ function populateCategories() {
   });
 }
 
+function populateSourceSelect() {
+  const srcs = [...new Set(QUIZ_DATA.map(getSourceLabel))].sort();
+  const sel = document.getElementById('srcSelect');
+  sel.innerHTML = '<option value="__all__">All Sources (' + QUIZ_DATA.length + ')</option>';
+  srcs.forEach(s => {
+    const count = QUIZ_DATA.filter(q => getSourceLabel(q) === s).length;
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s + ' (' + count + ')';
+    sel.appendChild(opt);
+  });
+}
+
 function startQuiz() {
   const cat = document.getElementById('catSelect').value;
-  let pool = cat === '__all__' ? QUIZ_DATA : QUIZ_DATA.filter(q => q.category === cat);
+  const src = document.getElementById('srcSelect').value;
+  let pool = QUIZ_DATA;
+  if (cat !== '__all__') pool = pool.filter(q => q.category === cat);
+  if (src !== '__all__') pool = pool.filter(q => getSourceLabel(q) === src);
+  if (pool.length === 0) {
+    alert('No questions match that Chapter + Source combination. Try a different filter.');
+    return;
+  }
   pool = shuffle(pool);
   let n = parseInt(document.getElementById('numQ').value) || 10;
   n = Math.min(n, pool.length);
@@ -530,9 +564,29 @@ function populateRefCategories() {
   });
 }
 
+function populateRefSourceSelect() {
+  const srcs = [...new Set(REF_DATA.map(getSourceLabel))].sort();
+  const sel = document.getElementById('refSrcSelect');
+  sel.innerHTML = '<option value="__all__">All Sources (' + REF_DATA.length + ')</option>';
+  srcs.forEach(s => {
+    const count = REF_DATA.filter(q => getSourceLabel(q) === s).length;
+    const opt = document.createElement('option');
+    opt.value = s;
+    opt.textContent = s + ' (' + count + ')';
+    sel.appendChild(opt);
+  });
+}
+
 function startRef() {
   const cat = document.getElementById('refCatSelect').value;
-  let pool = cat === '__all__' ? REF_DATA : REF_DATA.filter(q => q.category === cat);
+  const src = document.getElementById('refSrcSelect').value;
+  let pool = REF_DATA;
+  if (cat !== '__all__') pool = pool.filter(q => q.category === cat);
+  if (src !== '__all__') pool = pool.filter(q => getSourceLabel(q) === src);
+  if (pool.length === 0) {
+    alert('No reference items match that Chapter + Source combination. Try a different filter.');
+    return;
+  }
   refSession = shuffle(pool);
   refCurrent = 0;
   document.getElementById('refSetup').classList.add('hidden');
