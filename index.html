@@ -224,6 +224,8 @@
 <div class="container">
   <h1>📋 E5-E6 Management</h1>
   <div class="subtitle" id="subtitleText">Quiz Prep &amp; Quick Reference</div>
+  <div style="text-align:center; font-size:10px; color:#475569; margin-bottom:10px;">BUILD-MARKER-NAVLOCK-DEBUG-01</div>
+  <div id="debugPanel" style="display:none; font-size:11px; color:#fca5a5; background:#0f172a; border:1px solid #ef4444; border-radius:8px; padding:10px; margin-bottom:10px; white-space:pre-wrap; font-family:monospace;"></div>
 
   <div id="loadError" class="card load-error hidden">
     Couldn't find <code>data.js</code>. Make sure <code>index.html</code> and <code>data.js</code>
@@ -527,9 +529,22 @@ let flagged = [];
 
 function setNavLocked(locked) {
   quizActive = locked;
-  document.getElementById('paperSwitchRow').classList.toggle('hidden', locked);
-  document.getElementById('tabsRow').classList.toggle('hidden', locked);
+  const psr = document.getElementById('paperSwitchRow');
+  const tr = document.getElementById('tabsRow');
+  psr.classList.toggle('hidden', locked);
+  tr.classList.toggle('hidden', locked);
   document.getElementById('historyArea').classList.add('hidden');
+
+  const dbg = document.getElementById('debugPanel');
+  const psrStyle = window.getComputedStyle(psr).display;
+  const trStyle = window.getComputedStyle(tr).display;
+  dbg.style.display = 'block';
+  dbg.textContent =
+    'setNavLocked(' + locked + ') called\n' +
+    'paperSwitchRow classList: ' + psr.className + '\n' +
+    'paperSwitchRow computed display: ' + psrStyle + '\n' +
+    'tabsRow classList: ' + tr.className + '\n' +
+    'tabsRow computed display: ' + trStyle;
 }
 
 function updateTimerPreview() {
