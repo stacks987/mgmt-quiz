@@ -199,6 +199,7 @@
     margin-top: 6px;
   }
   .btn:hover { background: var(--accent-hover); }
+  .btn:disabled, .paper-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   .btn.secondary { background: var(--border); color: var(--text); }
   .btn.secondary:hover { background: var(--border-strong); }
   .btn-row { display: flex; gap: 10px; }
@@ -433,7 +434,7 @@
           </select>
           <div class="timer-preview" id="timerPreview"></div>
         </div>
-        <button class="btn" onclick="startQuiz()">Start Quiz</button>
+        <button class="btn" id="startQuizBtn" onclick="startQuiz()">Start Quiz</button>
         <button class="btn secondary" style="margin-top:8px;" onclick="openHistory()">📜 History</button>
       </div>
 
@@ -496,6 +497,7 @@
         <div class="score-sub" id="finalSub"></div>
         <div class="cat-breakdown" id="catBreakdown"></div>
         <button class="btn" onclick="location.reload()" style="margin-top:20px;">Try Again</button>
+        <div id="recentHistoryPreview" style="text-align:left; margin-top:20px;"></div>
       </div>
     </div>
 
@@ -646,37 +648,54 @@ function refreshHeaderAndLists() {
   updateTimerPreview();
 }
 
+function setPaperLoading(loading) {
+  paperLoading = loading;
+  ['paperMgmtBtn', 'paperTelecomBtn', 'paperTelecomPdf3Btn'].forEach(id => {
+    document.getElementById(id).disabled = loading;
+  });
+  const startBtn = document.getElementById('startQuizBtn');
+  if (startBtn) {
+    startBtn.disabled = loading;
+    startBtn.textContent = loading ? 'Loading\u2026' : 'Start Quiz';
+  }
+}
+
 async function loadPaper(key) {
   const cfg = PAPERS[key];
   document.getElementById('loadError').classList.add('hidden');
+  setPaperLoading(true);
 
-  let quizText;
   try {
-    const r = await fetch(cfg.quizCsv);
-    if (!r.ok) throw new Error(cfg.quizCsv + ': ' + r.status);
-    quizText = await r.text();
-  } catch (err) {
-    showLoadError(cfg, err);
-    return;
+    let quizText;
+    try {
+      const r = await fetch(cfg.quizCsv);
+      if (!r.ok) throw new Error(cfg.quizCsv + ': ' + r.status);
+      quizText = await r.text();
+    } catch (err) {
+      showLoadError(cfg, err);
+      return;
+    }
+
+    let refText = '';
+    try {
+      const r2 = await fetch(cfg.refCsv);
+      if (r2.ok) refText = await r2.text();
+    } catch (e) { /* reference file is optional per paper */ }
+
+    window.QUIZ_DATA = parseQuizCsv(quizText);
+    window.REF_DATA = refText ? parseRefCsv(refText) : [];
+
+    currentPaper = key;
+    document.getElementById('paperMgmtBtn').classList.toggle('active', key === 'management');
+    document.getElementById('paperTelecomBtn').classList.toggle('active', key === 'telecom');
+    document.getElementById('paperTelecomPdf3Btn').classList.toggle('active', key === 'telecom_pdf3');
+
+    resetToSetupScreens();
+    refreshHeaderAndLists();
+    document.getElementById('mainApp').classList.remove('hidden');
+  } finally {
+    setPaperLoading(false);
   }
-
-  let refText = '';
-  try {
-    const r2 = await fetch(cfg.refCsv);
-    if (r2.ok) refText = await r2.text();
-  } catch (e) { /* reference file is optional per paper */ }
-
-  window.QUIZ_DATA = parseQuizCsv(quizText);
-  window.REF_DATA = refText ? parseRefCsv(refText) : [];
-
-  currentPaper = key;
-  document.getElementById('paperMgmtBtn').classList.toggle('active', key === 'management');
-  document.getElementById('paperTelecomBtn').classList.toggle('active', key === 'telecom');
-  document.getElementById('paperTelecomPdf3Btn').classList.toggle('active', key === 'telecom_pdf3');
-
-  resetToSetupScreens();
-  refreshHeaderAndLists();
-  document.getElementById('mainApp').classList.remove('hidden');
 }
 
 function switchPaper(key) {
@@ -702,6 +721,7 @@ let timerTotalSeconds = 0;
 let timerRemaining = 0;
 let timerInterval = null;
 let quizActive = false;
+let paperLoading = false;
 let flagged = [];
 
 function setNavLocked(locked) {
@@ -788,6 +808,7 @@ function populateSourceSelect() {
 }
 
 function startQuiz() {
+  if (paperLoading) return; // guard against starting on stale data mid paper-switch
   const cat = document.getElementById('catSelect').value;
   const src = document.getElementById('srcSelect').value;
   let pool = QUIZ_DATA;
@@ -977,6 +998,25 @@ function finishQuiz(timedOut) {
   });
 
   saveHistoryEntry(correct, session.length, pct, timedOut);
+
+  const recent = loadHistory().slice(0, 3);
+  const preview = document.getElementById('recentHistoryPreview');
+  const heading = document.createElement('div');
+  heading.style.cssText = 'font-size:13px; font-weight:700; color:var(--text-muted); margin-bottom:10px;';
+  heading.textContent = 'Recent Tests';
+  preview.innerHTML = '';
+  preview.appendChild(heading);
+  const list = document.createElement('div');
+  renderHistoryEntries(list, recent);
+  preview.appendChild(list);
+  const viewAllBtn = document.createElement('button');
+  viewAllBtn.className = 'btn secondary';
+  viewAllBtn.textContent = 'View Full History';
+  viewAllBtn.onclick = () => {
+    document.getElementById('scoreArea').classList.add('hidden');
+    openHistory();
+  };
+  preview.appendChild(viewAllBtn);
 }
 
 const HISTORY_KEY = 'mgmt_quiz_history';
@@ -1001,27 +1041,30 @@ function loadHistory() {
   try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; }
 }
 
+function renderHistoryEntries(container, history, emptyMsg) {
+  container.innerHTML = '';
+  if (history.length === 0) {
+    container.innerHTML = '<div class="history-empty">' + (emptyMsg || 'No tests taken yet.') + '</div>';
+    return;
+  }
+  history.forEach(h => {
+    const div = document.createElement('div');
+    div.className = 'history-entry';
+    const d = new Date(h.date);
+    const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const scoreClass = h.pct >= 60 ? 'good' : 'bad';
+    div.innerHTML =
+      '<div class="history-top"><span class="history-score ' + scoreClass + '">' + h.correct + ' / ' + h.total + ' (' + h.pct + '%)</span>' +
+      '<span class="history-meta">' + dateStr + '</span></div>' +
+      '<div class="history-meta">' + h.paperLabel + ' \u00b7 ' + h.chapter + ' \u00b7 ' + h.source + ' \u00b7 ' + (h.mode === 'exam' ? 'Exam' : 'Practice') +
+      (h.timedOut ? ' \u00b7 \u23F1 timed out' : '') + '</div>';
+    container.appendChild(div);
+  });
+}
+
 function openHistory() {
   const history = loadHistory();
-  const list = document.getElementById('historyList');
-  list.innerHTML = '';
-  if (history.length === 0) {
-    list.innerHTML = '<div class="history-empty">No tests taken yet.</div>';
-  } else {
-    history.forEach(h => {
-      const div = document.createElement('div');
-      div.className = 'history-entry';
-      const d = new Date(h.date);
-      const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-      const scoreClass = h.pct >= 60 ? 'good' : 'bad';
-      div.innerHTML =
-        '<div class="history-top"><span class="history-score ' + scoreClass + '">' + h.correct + ' / ' + h.total + ' (' + h.pct + '%)</span>' +
-        '<span class="history-meta">' + dateStr + '</span></div>' +
-        '<div class="history-meta">' + h.paperLabel + ' \u00b7 ' + h.chapter + ' \u00b7 ' + h.source + ' \u00b7 ' + (h.mode === 'exam' ? 'Exam' : 'Practice') +
-        (h.timedOut ? ' \u00b7 \u23F1 timed out' : '') + '</div>';
-      list.appendChild(div);
-    });
-  }
+  renderHistoryEntries(document.getElementById('historyList'), history);
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('historyArea').classList.remove('hidden');
 }
