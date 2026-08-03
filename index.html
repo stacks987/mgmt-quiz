@@ -66,10 +66,53 @@
   .progress-fill { height: 100%; background: #6366f1; transition: width 0.3s; }
 
   .topbar { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #94a3b8; margin-bottom: 10px; gap: 10px; }
-  .timer-badge { font-variant-numeric: tabular-nums; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: #1e293b; color: #a5b4fc; }
+  #timerRow { text-align: center; margin-bottom: 8px; min-height: 0; }
+  .timer-badge { font-variant-numeric: tabular-nums; font-weight: 700; font-size: 22px; padding: 6px 18px; border-radius: 20px; background: #1e293b; color: #a5b4fc; display: inline-block; }
+  .timer-badge:empty { display: none; }
   .timer-badge.warn { background: #422006; color: #fdba74; }
   .timer-badge.critical { background: #2f0a0a; color: #fca5a5; }
   .timer-preview { font-size: 12px; color: #64748b; margin-top: 6px; }
+  .paper-btn.locked, .tab-btn.locked { opacity: 0.4; cursor: not-allowed; }
+
+  .quiz-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+  .flag-btn {
+    flex-shrink: 0; border: 1px solid #475569; background: #0f172a; color: #94a3b8;
+    padding: 6px 12px; border-radius: 20px; font-size: 12.5px; cursor: pointer;
+  }
+  .flag-btn.active { border-color: #f59e0b; background: #422006; color: #fdba74; }
+
+  .btn.danger-outline { background: transparent; border: 1px solid #ef4444; color: #fca5a5; }
+  .btn.danger-outline:hover { background: #2f0a0a; }
+
+  .modal-backdrop {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6);
+    display: flex; align-items: flex-start; justify-content: center; padding: 20px; z-index: 100; overflow-y: auto;
+  }
+  .modal-backdrop.hidden { display: none; }
+  .modal { max-width: 480px; width: 100%; margin-top: 20px; margin-bottom: 20px; }
+  .modal-title { font-size: 16px; font-weight: 700; color: #f1f5f9; margin-bottom: 14px; }
+  .overview-legend { display: flex; gap: 14px; font-size: 12px; color: #94a3b8; margin-bottom: 14px; flex-wrap: wrap; }
+  .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .dot-unanswered { background: #334155; }
+  .dot-answered { background: #6366f1; }
+  .dot-flagged { border: 2px solid #f59e0b; background: transparent; }
+  .overview-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
+  .overview-cell {
+    aspect-ratio: 1; border-radius: 8px; border: 1px solid #475569; background: #334155;
+    color: #e2e8f0; font-size: 13px; font-weight: 600; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; position: relative;
+  }
+  .overview-cell.answered { background: #312e81; border-color: #6366f1; }
+  .overview-cell.current { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+  .overview-cell.flagged { border-color: #f59e0b; border-width: 2px; }
+
+  .history-entry { padding: 12px; border: 1px solid #334155; border-radius: 10px; margin-bottom: 10px; }
+  .history-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .history-score { font-weight: 700; font-size: 15px; }
+  .history-score.good { color: #86efac; }
+  .history-score.bad { color: #fca5a5; }
+  .history-meta { font-size: 12px; color: #94a3b8; }
+  .history-empty { color: #64748b; font-size: 13px; text-align: center; padding: 20px 0; }
   .cat-tag { display: inline-block; background: #312e81; color: #c7d2fe; padding: 3px 10px; border-radius: 20px; font-size: 11px; margin-bottom: 12px; }
   .cat-tag.unclassified { background: #334155; color: #94a3b8; }
   .source-tag { font-size: 11px; color: #64748b; margin-bottom: 12px; }
@@ -226,18 +269,35 @@
           <div class="timer-preview" id="timerPreview"></div>
         </div>
         <button class="btn" onclick="startQuiz()">Start Quiz</button>
+        <button class="btn secondary" style="margin-top:8px;" onclick="openHistory()">\uD83D\uDCDC History</button>
+      </div>
+
+      <div id="historyArea" class="hidden">
+        <div class="card">
+          <div class="modal-title">Test History</div>
+          <div id="historyList"></div>
+          <div class="btn-row" style="margin-top:14px;">
+            <button class="btn secondary" onclick="closeHistory()">Back</button>
+            <button class="btn danger-outline" onclick="clearHistory()">Clear History</button>
+          </div>
+        </div>
       </div>
 
       <div id="quizArea" class="hidden">
         <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+        <div id="timerRow"><span id="timerBadge"></span></div>
         <div class="topbar">
           <span id="qCounter"></span>
-          <span id="timerBadge"></span>
           <span id="scoreLive"></span>
         </div>
         <div class="card">
-          <div class="cat-tag" id="catTag"></div>
-          <div class="source-tag" id="sourceTag"></div>
+          <div class="quiz-card-top">
+            <div>
+              <div class="cat-tag" id="catTag"></div>
+              <div class="source-tag" id="sourceTag"></div>
+            </div>
+            <button class="flag-btn" id="flagBtn" onclick="toggleFlag()">\uD83D\uDEA9 Flag</button>
+          </div>
           <div class="question-text" id="qText"></div>
           <div id="choicesArea"></div>
           <div class="explain" id="explainBox"></div>
@@ -245,6 +305,23 @@
         <div class="btn-row">
           <button class="btn secondary" onclick="prevQ()">Previous</button>
           <button class="btn" id="nextBtn" onclick="nextQ()">Next</button>
+        </div>
+        <div class="btn-row" style="margin-top:8px;">
+          <button class="btn secondary" onclick="openOverview()">\uD83D\uDCCB Overview</button>
+          <button class="btn danger-outline" onclick="endTest()">\u23F9 End Test</button>
+        </div>
+      </div>
+
+      <div id="overviewModal" class="modal-backdrop hidden">
+        <div class="modal card">
+          <div class="modal-title">Question Overview</div>
+          <div class="overview-legend">
+            <span><span class="legend-dot dot-unanswered"></span> Unanswered</span>
+            <span><span class="legend-dot dot-answered"></span> Answered</span>
+            <span><span class="legend-dot dot-flagged"></span> Flagged</span>
+          </div>
+          <div class="overview-grid" id="overviewGrid"></div>
+          <button class="btn secondary" onclick="closeOverview()">Close</button>
         </div>
       </div>
 
@@ -354,6 +431,7 @@ function showLoadError(cfg, err) {
 
 function resetToSetupScreens() {
   stopTimer();
+  setNavLocked(false);
   document.getElementById('setup').classList.remove('hidden');
   document.getElementById('quizArea').classList.add('hidden');
   document.getElementById('scoreArea').classList.add('hidden');
@@ -435,6 +513,18 @@ let mode = 'practice';
 let timerTotalSeconds = 0;
 let timerRemaining = 0;
 let timerInterval = null;
+let quizActive = false;
+let flagged = [];
+
+function setNavLocked(locked) {
+  quizActive = locked;
+  ['paperMgmtBtn', 'paperTelecomBtn', 'paperTelecomPdf3Btn', 'tabQuizBtn', 'tabRefBtn'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.disabled = locked;
+    el.classList.toggle('locked', locked);
+  });
+}
 
 function updateTimerPreview() {
   const secPerQ = parseInt(document.getElementById('timerSelect').value) || 0;
@@ -528,6 +618,7 @@ function startQuiz() {
   session = pool.slice(0, n);
   mode = document.getElementById('mode').value;
   answers = new Array(session.length).fill(null);
+  flagged = new Array(session.length).fill(false);
   current = 0;
   const secPerQ = parseInt(document.getElementById('timerSelect').value) || 0;
   if (secPerQ > 0) {
@@ -539,6 +630,7 @@ function startQuiz() {
   }
   document.getElementById('setup').classList.add('hidden');
   document.getElementById('quizArea').classList.remove('hidden');
+  setNavLocked(true);
   renderQ();
 }
 window.startQuiz = startQuiz;
@@ -583,6 +675,10 @@ function renderQ() {
   }
 
   document.getElementById('nextBtn').textContent = current === session.length - 1 ? 'Finish' : 'Next';
+
+  const flagBtn = document.getElementById('flagBtn');
+  flagBtn.classList.toggle('active', !!flagged[current]);
+  flagBtn.textContent = flagged[current] ? '\uD83D\uDEA9 Flagged' : '\uD83D\uDEA9 Flag';
 }
 
 function selectAnswer(i) {
@@ -590,6 +686,54 @@ function selectAnswer(i) {
   answers[current] = i;
   renderQ();
 }
+
+function toggleFlag() {
+  flagged[current] = !flagged[current];
+  const flagBtn = document.getElementById('flagBtn');
+  flagBtn.classList.toggle('active', !!flagged[current]);
+  flagBtn.textContent = flagged[current] ? '\uD83D\uDEA9 Flagged' : '\uD83D\uDEA9 Flag';
+}
+window.toggleFlag = toggleFlag;
+
+function openOverview() {
+  const grid = document.getElementById('overviewGrid');
+  grid.innerHTML = '';
+  session.forEach((q, i) => {
+    const cell = document.createElement('button');
+    cell.className = 'overview-cell';
+    if (answers[i] !== null) cell.classList.add('answered');
+    if (flagged[i]) cell.classList.add('flagged');
+    if (i === current) cell.classList.add('current');
+    cell.textContent = i + 1;
+    cell.onclick = () => jumpToQuestion(i);
+    grid.appendChild(cell);
+  });
+  document.getElementById('overviewModal').classList.remove('hidden');
+}
+window.openOverview = openOverview;
+
+function closeOverview() {
+  document.getElementById('overviewModal').classList.add('hidden');
+}
+window.closeOverview = closeOverview;
+
+function jumpToQuestion(i) {
+  current = i;
+  closeOverview();
+  renderQ();
+}
+window.jumpToQuestion = jumpToQuestion;
+
+function endTest() {
+  const unanswered = answers.filter(a => a === null).length;
+  const msg = unanswered > 0
+    ? `You still have ${unanswered} unanswered question${unanswered===1?'':'s'}. End the test now and submit what you have?`
+    : 'End the test and submit now?';
+  if (confirm(msg)) {
+    finishQuiz(false);
+  }
+}
+window.endTest = endTest;
 
 function nextQ() {
   if (current === session.length - 1) {
@@ -608,6 +752,7 @@ window.prevQ = prevQ;
 
 function finishQuiz(timedOut) {
   stopTimer();
+  setNavLocked(false);
   document.getElementById('quizArea').classList.add('hidden');
   document.getElementById('scoreArea').classList.remove('hidden');
   const correct = answers.filter((a,i) => a === session[i].answer).length;
@@ -629,7 +774,71 @@ function finishQuiz(timedOut) {
     row.innerHTML = '<span>' + c.trim() + '</span><span>' + catStats[c].correct + '/' + catStats[c].total + '</span>';
     bd.appendChild(row);
   });
+
+  saveHistoryEntry(correct, session.length, pct, timedOut);
 }
+
+const HISTORY_KEY = 'mgmt_quiz_history';
+
+function saveHistoryEntry(correct, total, pct, timedOut) {
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { history = []; }
+  history.unshift({
+    date: new Date().toISOString(),
+    paper: currentPaper,
+    paperLabel: PAPERS[currentPaper].label,
+    chapter: document.getElementById('catSelect').value === '__all__' ? 'All Chapters' : document.getElementById('catSelect').value,
+    source: document.getElementById('srcSelect').value === '__all__' ? 'All Sources' : document.getElementById('srcSelect').value,
+    mode: mode,
+    correct, total, pct, timedOut: !!timedOut
+  });
+  history = history.slice(0, 100);
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) { console.error('could not save history', e); }
+}
+
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { return []; }
+}
+
+function openHistory() {
+  const history = loadHistory();
+  const list = document.getElementById('historyList');
+  list.innerHTML = '';
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">No tests taken yet.</div>';
+  } else {
+    history.forEach(h => {
+      const div = document.createElement('div');
+      div.className = 'history-entry';
+      const d = new Date(h.date);
+      const dateStr = d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+      const scoreClass = h.pct >= 60 ? 'good' : 'bad';
+      div.innerHTML =
+        '<div class="history-top"><span class="history-score ' + scoreClass + '">' + h.correct + ' / ' + h.total + ' (' + h.pct + '%)</span>' +
+        '<span class="history-meta">' + dateStr + '</span></div>' +
+        '<div class="history-meta">' + h.paperLabel + ' \u00b7 ' + h.chapter + ' \u00b7 ' + h.source + ' \u00b7 ' + (h.mode === 'exam' ? 'Exam' : 'Practice') +
+        (h.timedOut ? ' \u00b7 \u23F1 timed out' : '') + '</div>';
+      list.appendChild(div);
+    });
+  }
+  document.getElementById('setup').classList.add('hidden');
+  document.getElementById('historyArea').classList.remove('hidden');
+}
+window.openHistory = openHistory;
+
+function closeHistory() {
+  document.getElementById('historyArea').classList.add('hidden');
+  document.getElementById('setup').classList.remove('hidden');
+}
+window.closeHistory = closeHistory;
+
+function clearHistory() {
+  if (confirm('Clear all test history? This cannot be undone.')) {
+    localStorage.removeItem(HISTORY_KEY);
+    openHistory();
+  }
+}
+window.clearHistory = clearHistory;
 
 /* ============ QUICK REFERENCE LOGIC ============ */
 let refSession = [];
