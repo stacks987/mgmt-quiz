@@ -96,15 +96,22 @@
   .dot-unanswered { background: #334155; }
   .dot-answered { background: #6366f1; }
   .dot-flagged { border: 2px solid #f59e0b; background: transparent; }
-  .overview-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; margin-bottom: 16px; }
-  .overview-cell {
-    aspect-ratio: 1; border-radius: 8px; border: 1px solid #475569; background: #334155;
-    color: #e2e8f0; font-size: 13px; font-weight: 600; cursor: pointer; display: flex;
-    align-items: center; justify-content: center; position: relative;
+  .overview-grid { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; max-height: 55vh; overflow-y: auto; }
+  .overview-row {
+    display: flex; align-items: center; gap: 10px; text-align: left; width: 100%;
+    border-radius: 8px; border: 1px solid #475569; background: #0f172a;
+    color: #e2e8f0; font-size: 13px; cursor: pointer; padding: 9px 10px;
   }
-  .overview-cell.answered { background: #312e81; border-color: #6366f1; }
-  .overview-cell.current { outline: 2px solid #a5b4fc; outline-offset: 2px; }
-  .overview-cell.flagged { border-color: #f59e0b; border-width: 2px; }
+  .overview-num {
+    flex-shrink: 0; width: 24px; height: 24px; border-radius: 50%; background: #334155;
+    display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700;
+  }
+  .overview-qtext { flex: 1; line-height: 1.35; }
+  .overview-flag { flex-shrink: 0; font-size: 13px; }
+  .overview-row.answered { border-color: #6366f1; }
+  .overview-row.answered .overview-num { background: #312e81; color: #c7d2fe; }
+  .overview-row.current { outline: 2px solid #a5b4fc; outline-offset: 1px; }
+  .overview-row.flagged { border-color: #f59e0b; }
 
   .history-entry { padding: 12px; border: 1px solid #334155; border-radius: 10px; margin-bottom: 10px; }
   .history-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
@@ -225,12 +232,12 @@
   </div>
 
   <div id="mainApp" class="hidden">
-    <div class="paper-switch">
+    <div class="paper-switch" id="paperSwitchRow">
       <button class="paper-btn active" id="paperMgmtBtn" onclick="switchPaper('management')">📋 Management</button>
       <button class="paper-btn" id="paperTelecomBtn" onclick="switchPaper('telecom')">📡 Telecom (pdf6)</button>
       <button class="paper-btn" id="paperTelecomPdf3Btn" onclick="switchPaper('telecom_pdf3')">🌐 Telecom (pdf3)</button>
     </div>
-    <div class="tabs">
+    <div class="tabs" id="tabsRow">
       <button class="tab-btn active" id="tabQuizBtn" onclick="switchTab('quiz')">Quiz</button>
       <button class="tab-btn" id="tabRefBtn" onclick="switchTab('ref')">Quick Reference</button>
     </div>
@@ -269,7 +276,7 @@
           <div class="timer-preview" id="timerPreview"></div>
         </div>
         <button class="btn" onclick="startQuiz()">Start Quiz</button>
-        <button class="btn secondary" style="margin-top:8px;" onclick="openHistory()">\uD83D\uDCDC History</button>
+        <button class="btn secondary" style="margin-top:8px;" onclick="openHistory()">📜 History</button>
       </div>
 
       <div id="historyArea" class="hidden">
@@ -296,7 +303,7 @@
               <div class="cat-tag" id="catTag"></div>
               <div class="source-tag" id="sourceTag"></div>
             </div>
-            <button class="flag-btn" id="flagBtn" onclick="toggleFlag()">\uD83D\uDEA9 Flag</button>
+            <button class="flag-btn" id="flagBtn" onclick="toggleFlag()">🚩 Flag</button>
           </div>
           <div class="question-text" id="qText"></div>
           <div id="choicesArea"></div>
@@ -307,8 +314,8 @@
           <button class="btn" id="nextBtn" onclick="nextQ()">Next</button>
         </div>
         <div class="btn-row" style="margin-top:8px;">
-          <button class="btn secondary" onclick="openOverview()">\uD83D\uDCCB Overview</button>
-          <button class="btn danger-outline" onclick="endTest()">\u23F9 End Test</button>
+          <button class="btn secondary" onclick="openOverview()">📋 Overview</button>
+          <button class="btn danger-outline" onclick="endTest()">⏹ End Test</button>
         </div>
       </div>
 
@@ -518,12 +525,9 @@ let flagged = [];
 
 function setNavLocked(locked) {
   quizActive = locked;
-  ['paperMgmtBtn', 'paperTelecomBtn', 'paperTelecomPdf3Btn', 'tabQuizBtn', 'tabRefBtn'].forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    el.disabled = locked;
-    el.classList.toggle('locked', locked);
-  });
+  document.getElementById('paperSwitchRow').classList.toggle('hidden', locked);
+  document.getElementById('tabsRow').classList.toggle('hidden', locked);
+  document.getElementById('historyArea').classList.add('hidden');
 }
 
 function updateTimerPreview() {
@@ -696,17 +700,33 @@ function toggleFlag() {
 window.toggleFlag = toggleFlag;
 
 function openOverview() {
-  const grid = document.getElementById('overviewGrid');
-  grid.innerHTML = '';
+  const list = document.getElementById('overviewGrid');
+  list.innerHTML = '';
   session.forEach((q, i) => {
-    const cell = document.createElement('button');
-    cell.className = 'overview-cell';
-    if (answers[i] !== null) cell.classList.add('answered');
-    if (flagged[i]) cell.classList.add('flagged');
-    if (i === current) cell.classList.add('current');
-    cell.textContent = i + 1;
-    cell.onclick = () => jumpToQuestion(i);
-    grid.appendChild(cell);
+    const row = document.createElement('button');
+    row.className = 'overview-row';
+    if (answers[i] !== null) row.classList.add('answered');
+    if (flagged[i]) row.classList.add('flagged');
+    if (i === current) row.classList.add('current');
+    row.onclick = () => jumpToQuestion(i);
+
+    const num = document.createElement('span');
+    num.className = 'overview-num';
+    num.textContent = i + 1;
+    row.appendChild(num);
+
+    const qtext = document.createElement('span');
+    qtext.className = 'overview-qtext';
+    qtext.textContent = q.question.length > 90 ? q.question.slice(0, 90) + '\u2026' : q.question;
+    row.appendChild(qtext);
+
+    if (flagged[i]) {
+      const flag = document.createElement('span');
+      flag.className = 'overview-flag';
+      flag.textContent = '\uD83D\uDEA9';
+      row.appendChild(flag);
+    }
+    list.appendChild(row);
   });
   document.getElementById('overviewModal').classList.remove('hidden');
 }
