@@ -81,6 +81,74 @@
   --shadow-scrim: rgba(15,23,42,0.4);
 }
 
+[data-theme="midnight"] {
+  --text-muted: #a1a1aa;
+  --accent: #818cf8;
+  --border: #27272a;
+  --bg-input: #000000;
+  --border-strong: #3f3f46;
+  --danger-text: #fca5a5;
+  --text: #e4e4e7;
+  --danger-bg: #2f0a0a;
+  --bg-card: #0a0a0f;
+  --warning-text: #fdba74;
+  --warning-border: #f59e0b;
+  --danger-border: #ef4444;
+  --accent-light: #a5b4fc;
+  --success-text: #86efac;
+  --text-faint: #71717a;
+  --warning-bg: #422006;
+  --accent-bg: #1e1b4b;
+  --text-bright: #ffffff;
+  --text-heading: #fafafa;
+  --text-subtle: #d4d4d8;
+  --accent-text: #c7d2fe;
+  --accent-selected-bg: #1e1b4b;
+  --accent-text-alt: #e0e7ff;
+  --info-text: #6ee7b7;
+  --accent-hover: #6366f1;
+  --success-border: #22c55e;
+  --info-bg: #1e3a2f;
+  --success-bg: #052e16;
+  --bg-page-start: #000000;
+  --bg-page-end: #050505;
+  --shadow-scrim: rgba(0,0,0,0.8);
+}
+
+[data-theme="sepia"] {
+  --text-muted: #7a6b4f;
+  --accent: #b45309;
+  --border: #d9c9a8;
+  --bg-input: #f0e6d2;
+  --border-strong: #b8a47e;
+  --danger-text: #991b1b;
+  --text: #4a3f2a;
+  --danger-bg: #fee2e2;
+  --bg-card: #faf3e3;
+  --warning-text: #78350f;
+  --warning-border: #d97706;
+  --danger-border: #dc2626;
+  --accent-light: #92400e;
+  --success-text: #166534;
+  --text-faint: #9c8b68;
+  --warning-bg: #fef3c7;
+  --accent-bg: #f5deb3;
+  --text-bright: #2a2010;
+  --text-heading: #3a2f1a;
+  --text-subtle: #5c4f38;
+  --accent-text: #7c4a03;
+  --accent-selected-bg: #f5deb3;
+  --accent-text-alt: #78350f;
+  --info-text: #065f46;
+  --accent-hover: #92400e;
+  --success-border: #16a34a;
+  --info-bg: #d1fae5;
+  --success-bg: #dcfce7;
+  --bg-page-start: #f4ecd8;
+  --bg-page-end: #ede0c8;
+  --shadow-scrim: rgba(74,63,42,0.4);
+}
+
 
   * { box-sizing: border-box; }
   body {
@@ -93,12 +161,10 @@
   }
   .container { max-width: 720px; margin: 0 auto; }
   h1 { font-size: 20px; text-align: center; margin-bottom: 4px; color: var(--text-heading); }
-  #themeToggle {
-    position: fixed; top: 14px; right: 14px; z-index: 50;
-    width: 38px; height: 38px; border-radius: 50%;
-    border: 1px solid var(--border-strong); background: var(--bg-card);
-    color: var(--text); font-size: 17px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
+  #themeSelect {
+    position: fixed; top: 12px; right: 12px; z-index: 50; width: auto;
+    padding: 7px 10px; border-radius: 20px; font-size: 12.5px;
+    border: 1px solid var(--border-strong); background: var(--bg-card); color: var(--text);
   }
   .subtitle { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 20px; }
   .card {
@@ -133,7 +199,7 @@
     margin-top: 6px;
   }
   .btn:hover { background: var(--accent-hover); }
-  .btn.secondary { background: var(--border); }
+  .btn.secondary { background: var(--border); color: var(--text); }
   .btn.secondary:hover { background: var(--border-strong); }
   .btn-row { display: flex; gap: 10px; }
   .btn-row .btn { width: auto; flex: 1; }
@@ -306,7 +372,12 @@
 })();
 </script>
 <div class="container">
-  <button id="themeToggle" onclick="toggleTheme()" aria-label="Toggle light/dark theme">🌙</button>
+  <select id="themeSelect" onchange="changeTheme(this.value)" aria-label="Choose theme">
+    <option value="dark">🌙 Dark</option>
+    <option value="light">☀️ Light</option>
+    <option value="midnight">⬛ Midnight</option>
+    <option value="sepia">📜 Sepia</option>
+  </select>
   <h1>📋 E5-E6 Management</h1>
   <div class="subtitle" id="subtitleText">Quiz Prep &amp; Quick Reference</div>
 
@@ -473,22 +544,21 @@ License: MIT
 function runApp() {
 
 const THEME_KEY = 'mgmt_quiz_theme';
+const THEME_META_COLORS = { dark: '#6366f1', light: '#f8fafc', midnight: '#000000', sepia: '#f4ecd8' };
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
-  const btn = document.getElementById('themeToggle');
-  if (btn) btn.textContent = theme === 'light' ? '\uD83C\uDF19' : '\u2600\uFE0F';
+  const sel = document.getElementById('themeSelect');
+  if (sel) sel.value = theme;
   const metaTheme = document.querySelector('meta[name="theme-color"]');
-  if (metaTheme) metaTheme.setAttribute('content', theme === 'light' ? '#f8fafc' : '#6366f1');
+  if (metaTheme) metaTheme.setAttribute('content', THEME_META_COLORS[theme] || '#6366f1');
 }
 
-function toggleTheme() {
-  const current = document.documentElement.getAttribute('data-theme') || 'dark';
-  const next = current === 'light' ? 'dark' : 'light';
-  applyTheme(next);
-  try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
+function changeTheme(theme) {
+  applyTheme(theme);
+  try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
 }
-window.toggleTheme = toggleTheme;
+window.changeTheme = changeTheme;
 
 (function initTheme() {
   let saved = 'dark';
